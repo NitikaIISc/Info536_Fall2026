@@ -1,0 +1,346 @@
+---
+title: "Data Challenge: A Collaborative Analysis of the Global Terrorism Database"
+subtitle: "INFO 536: Data Science and Public Interest"
+author: "Dr. Nitika Sharma"
+institute: "College of Information Science, University of Arizona"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    toc-title: "Contents"
+    toc-location: left
+    theme: cosmo
+    code-fold: false
+    code-tools: true
+    highlight-style: github
+    embed-resources: true
+execute:
+  echo: true
+  warning: false
+  message: false
+  eval: false
+---
+
+# Overview
+
+This challenge is completed by the whole class as **one team of five**, on your own schedule, and it is the graded
+portion of the version control material. The analysis is short. The learning goal is the workflow that collaborative
+data teams use: forking, cloning, branching, committing, merging, resolving a conflict, and publishing a shared
+history that shows who contributed what.
+
+**The data question.** How did the number of attacks, the number of people killed, and the share of successful
+attacks change across world regions and decades?
+
+::: {.callout-note}
+## Think About It
+
+Before anyone writes code, the team meets once and answers the following. Which columns of the data does each part
+of the question need? What should each intermediate object be called, so that five people writing in parallel
+produce sections that fit together after the merge?
+:::
+
+::: {.callout-note collapse="true"}
+## Reveal the discussion
+
+The question needs `iyear` for time, `region_txt` for geography, `nkill` for fatalities, and `success` for the
+outcome of the attack. A decade variable is derived from `iyear`. Agreeing in advance on object names and on the
+columns that each object contains is the interface between the roles. The names in the table below are fixed for
+this challenge, so that no team time is spent negotiating them. The team still confirms that every member has read
+the table.
+:::
+
+# Tiers
+
+| Tier | Tasks |
+|:-----|:------|
+| Floor | Fork, clone, create a role branch, commit twice, and push the branch. |
+| Core | Merge the five branches into `main`, resolve the conflict, run the script from top to bottom, add the interpretation to the README, and push. |
+| Stretch | Open a pull request to the instructor repository, and use `git revert` on a commit that was deliberately wrong. |
+
+The floor and core tiers are required. The stretch tier is optional and is credited as described in the grading
+section.
+
+# Roles
+
+The team chooses a **repository owner** who creates the fork and performs the merges. The owner also holds one of
+the five roles. Each role is held by one member and works only in the region of the files assigned to it.
+
+| Role | Branch name | Responsibility | Object or file produced |
+|:-----|:------------|:---------------|:------------------------|
+| 1: Wrangling | `role1-wrangle` | Keep rows with a valid `iyear`, keep the columns the team needs, and create a `decade` column | `gtd_clean` |
+| 2: Summary | `role2-summary` | For each region and decade, count attacks, total the fatalities with `na.rm = TRUE`, and compute the share of successful attacks | `gtd_summary` |
+| 3: Plot | `role3-plot` | Draw attacks per decade with one line for each region, with labeled axes | `attacks_plot` |
+| 4: Checks | `role4-checks` | Report the percentage of missing `nkill` values in each region, and add `stopifnot()` checks that protect the analysis | `gtd_checks` |
+| 5: Documentation | `role5-docs` | Write the research question and a data dictionary in the README, and later the interpretation of the results | `README.md` |
+
+## The Interface Between Roles
+
+The five sections are written at the same time, so each one assumes the objects that come before it.
+
+| Object | Created by | Contents |
+|:-------|:-----------|:---------|
+| `gtd_clean` | Role 1 | Columns `iyear`, `region_txt`, `country_txt`, `attacktype1_txt`, `nkill`, `success`, and `decade` (text such as `"1990s"`) |
+| `gtd_summary` | Role 2 | One row per region and decade, with columns `region_txt`, `decade`, `n_attacks`, `total_killed`, and `success_rate` |
+| `attacks_plot` | Role 3 | A ggplot object built from `gtd_summary` |
+| `gtd_checks` | Role 4 | One row per region, with columns `region_txt` and `pct_missing_nkill` |
+
+Because the sections are written in parallel, a member cannot run their code until the branches are merged. A
+member who wants to test earlier defines the object it depends on at the Console, which is not saved in the script,
+or waits until the integration step and corrects any mismatch with one more commit.
+
+# Planning and Timeline
+
+All dates are set by the instructor in the email that accompanies this document.
+
+| Milestone | What must be true |
+|:----------|:------------------|
+| Team confirmed | Each member has claimed one role, and the repository owner is named |
+| Repository ready | The owner has forked the instructor repository and added the four teammates and the instructor as collaborators, and each teammate has accepted the invitation and cloned the fork |
+| Branches pushed | Each member has at least two commits on their role branch, pushed to the fork |
+| Integrated | The owner has merged all five branches into `main`, resolved the conflict, and pushed, and Role 5 has added the interpretation |
+| Submitted | The fork link is emailed to the instructor |
+
+::: {.callout-warning}
+## Ask for Help Before the Deadline
+
+Authentication is where most first attempts stall. A member who cannot sign in to GitHub emails the instructor the
+exact error message and the output of the five diagnostic commands in the lecture notes (`git --version`,
+`git config --global --list`, `git remote -v`, `git status`, and `git log --oneline --graph --all`) as soon as the
+problem appears, and does not wait for the final milestone.
+:::
+
+# Step A: Team Setup (floor)
+
+1. **The owner forks.** The owner opens the instructor repository on GitHub and clicks **Fork** in the upper-right
+   corner. This creates a copy under the owner's account.
+2. **The owner invites.** Under Settings > Collaborators, the owner adds the four teammates and the instructor.
+   **Each invited person accepts the invitation**, which arrives by email and also appears at
+   `github.com/OWNER/REPO/invitations`.
+3. **Everyone clones the fork**, not the instructor repository: File > New Project > Version Control > Git in
+   RStudio, with the **HTTPS** URL copied from the fork page.
+4. **The owner publishes the starter script** so that all five members begin from the same file.
+
+```{bash}
+#| label: team-start
+cp analysis_template.R team_analysis.R                   # owner only: copy the starter script, then...
+git add team_analysis.R                                  # stage the new file, then...
+git commit -m "Add team analysis script from template"   # record it, then...
+git push                                                 # publish to the fork, after which teammates run git pull
+```
+
+**Check.** `git log --oneline` shows the same latest commit identifier for all five members. A member whose log
+differs runs `git pull`.
+
+::: {.callout-note collapse="true"}
+## Why fork instead of clone?
+
+A fork is an independent copy on GitHub where the team has write access, while the instructor repository stays
+unchanged. Because the starter data and template are in the instructor repository, a fork gives the team those files
+and a place to push without needing permission on the original.
+:::
+
+::: {.callout-warning}
+## If This Fails: Step A
+
+| Message or symptom | Usual cause | Fix |
+|:-------------------|:------------|:----|
+| `Repository not found` when cloning | The invitation has not been accepted, or the URL is mistyped | Accept the invitation, then clone again |
+| `Permission to ... denied` on the first push | The project was cloned from the instructor repository, not the fork | Clone the fork, or run `git remote set-url origin` with the fork URL |
+| A teammate's log does not match | The teammate has not pulled | `git pull` |
+| The clone dialog fails with an authentication error | Stale credentials, or an SSH URL used without a key | Use the HTTPS URL and the HTTPS table in the lecture notes |
+:::
+
+The starter script has a contributor block, one marked section for each coding role, and a blank line between most
+contributor lines. Role 5 writes in `README.md` and on the contributor line.
+
+```{r}
+#| label: starter-script
+# Contributors
+# Wrangling:
+# Summary:
+
+# Plot:
+
+# Checks:
+
+# Documentation:
+
+library(tidyverse)
+gtd <- read_csv("data/gtd_sample.csv")
+
+# ---- Role 1: Wrangling ----
+
+# ---- Role 2: Summary ----
+
+# ---- Role 3: Plot ----
+
+# ---- Role 4: Checks ----
+```
+
+# Step B: Parallel Development (floor)
+
+Each member creates a branch with the name from the roles table, makes two commits, and pushes the branch.
+
+1. Create the branch: `git switch -c role1-wrangle` (using the member's own branch name).
+2. **First commit:** write the member's name on the matching contributor line, such as `# Wrangling: Alex`.
+3. **Second commit:** write the role's code in its section. Role 5 writes the question and the data dictionary in
+   `README.md`.
+4. Push the branch: `git push -u origin role1-wrangle`.
+
+The following code is an example of what the four coding sections can contain for this question. The team is
+welcome to improve on it, provided the object names and columns from the interface table are kept.
+
+```{r}
+#| label: example-sections
+# ---- Role 1: Wrangling ----
+gtd_clean <- gtd %>%                                                   # start from the full table, then...
+  filter(!is.na(iyear)) %>%                                            # drop rows without a year, then...
+  select(iyear, region_txt, country_txt, attacktype1_txt,
+         nkill, success) %>%                                           # keep the columns the team needs, then...
+  mutate(decade = paste0(floor(iyear / 10) * 10, "s"))                 # label each year with its decade
+
+# ---- Role 2: Summary ----
+gtd_summary <- gtd_clean %>%                                           # start from the wrangled table, then...
+  group_by(region_txt, decade) %>%                                     # one group for each region and decade, then...
+  summarise(n_attacks = n(),                                           # number of attacks in the group
+            total_killed = sum(nkill, na.rm = TRUE),                   # fatalities, ignoring missing values
+            success_rate = mean(success == 1),                         # share of attacks coded as successful
+            .groups = "drop")                                          # return an ungrouped table
+
+# ---- Role 3: Plot ----
+attacks_plot <- ggplot(gtd_summary,
+                       aes(x = decade, y = n_attacks,
+                           group = region_txt, colour = region_txt)) + # decade on x, one line per region, then...
+  geom_line() +                                                        # connect the decades, then...
+  labs(x = "Decade", y = "Number of attacks", colour = "Region")       # label the axes and the legend
+attacks_plot                                                           # display the figure
+
+# ---- Role 4: Checks ----
+gtd_checks <- gtd_clean %>%                                            # start from the wrangled table, then...
+  group_by(region_txt) %>%                                             # one group per region, then...
+  summarise(pct_missing_nkill = mean(is.na(nkill)) * 100,              # percentage of missing fatality counts
+            .groups = "drop")                                          # return an ungrouped table
+stopifnot(!anyNA(gtd_clean$iyear), nrow(gtd_summary) > 0)              # stop with an error if a basic assumption fails
+```
+
+# Step C: Integration and Conflict (core)
+
+The owner merges the five branches into `main`, in role order. The first merge is a fast-forward. The merge of the
+Role 2 branch is expected to **conflict**, because the Wrangling and Summary contributor lines sit next to each other
+and were edited on separate branches. The remaining contributor lines are separated by blank lines, so the merges of
+Roles 3, 4, and 5 are expected to be clean.
+
+```{bash}
+#| label: integrate
+git switch main                               # move to the integration branch, then...
+git pull                                      # make sure main is current, then...
+git fetch origin                              # download every teammate's pushed branch, then...
+git merge --no-edit origin/role1-wrangle      # first merge, expected to fast-forward, then...
+git merge --no-edit origin/role2-summary      # second merge, expected to report a conflict
+```
+
+Resolution follows four steps: open `team_analysis.R`, keep both contributor names, delete the lines that contain
+`<<<<<<<`, `=======`, and `>>>>>>>`, then stage and commit.
+
+```{bash}
+#| label: resolve
+git add team_analysis.R                                              # mark the file as resolved, then...
+git commit -m "Merge role 2 summary and resolve contributor lines"   # complete the merge, then...
+git merge --no-edit origin/role3-plot                                # third merge, expected to be clean, then...
+git merge --no-edit origin/role4-checks                              # fourth merge, expected to be clean, then...
+git merge --no-edit origin/role5-docs                                # fifth merge, expected to be clean, then...
+git push                                                             # publish the integrated main to the fork
+```
+
+After the merges, the owner runs `team_analysis.R` from top to bottom. A script that does not run points to
+mismatched object names or columns, which are corrected with one more commit. The four other members run `git pull`
+on `main`. **Role 5** then writes the interpretation in the README: three to five sentences that describe what the
+summary table and the figure show, and one sentence on what the missing-data check implies for the conclusions. Role
+5 commits and pushes that change to `main`.
+
+::: {.callout-warning}
+## If This Fails: Step C
+
+| Message or symptom | Usual cause | Fix |
+|:-------------------|:------------|:----|
+| `merge: role1-wrangle - not something we can merge` | The branch exists only on GitHub | Use `origin/role1-wrangle` after `git fetch origin`, as in the code above |
+| No conflict appears | The merge order or the edits differ from the plan | This is acceptable. Describe in the README what happened, and continue |
+| More conflicts than expected | Edits were made outside the assigned region | Resolve each file with the four steps, or run `git merge --abort` and agree on regions |
+| A text editor opens | A merge commit message is being edited | `Esc`, `:wq`, Enter in vim, or add `--no-edit` |
+| `rejected` on the final push | A teammate pushed to `main` in the meantime | `git pull`, then push again |
+| The script stops with an error about an object or a column | The sections disagree on a name | Compare the object names with the interface table, fix them, and commit |
+:::
+
+# Step D: Pull Request and Revert (stretch)
+
+1. On the fork page on GitHub, click **Contribute**, then **Open pull request**. The base is the instructor
+   repository's `main` and the compare branch is the fork's `main`.
+2. The description states each member's contribution in one sentence.
+3. **Revert practice.** The owner commits a deliberately wrong change, pushes it, and then undoes it with
+   `git revert HEAD` followed by `git push`. The README notes which commit was reverted.
+
+# What to Submit
+
+The team submits **one email** to the instructor by the final deadline, containing the link to the fork. The
+instructor was added as a collaborator in Step A. Nothing else needs to be attached, because everything is graded
+from the repository.
+
+The repository on `main` contains the following.
+
+- `team_analysis.R`, which runs from top to bottom and produces `gtd_clean`, `gtd_summary`, `attacks_plot`, and
+  `gtd_checks`.
+- `README.md`, with the question, the data dictionary, the interpretation, the name of the owner, and the role and
+  branch of each member.
+- The five role branches, left on GitHub and not deleted, so that the history shows who did what.
+
+# Grading
+
+Grading uses the repository history, which shows the contribution of each person.
+
+| Component | What is checked | Weight |
+|:----------|:----------------|:-------|
+| Individual contribution | The member's own branch contains at least two commits under the member's name, with messages that describe the change | 40% |
+| Collaboration workflow | All five branches were merged into `main`, the conflict is visible in the history together with its resolution, and every member's name is in the contributor block | 25% |
+| Analysis | The script runs, the objects match the interface table, and the figure is labeled | 20% |
+| README | The question, the data dictionary, and an interpretation that is supported by the results | 15% |
+
+The individual contribution mark is assigned to each member separately. The other components are shared by the team.
+The stretch tier earns up to 5 additional percentage points, divided as the instructor sees fit, for a pull request
+with a clear description and a documented revert.
+
+::: {.callout-note collapse="true"}
+## How a contribution is verified
+
+The instructor runs `git log --oneline --graph --all` to confirm the branch and merge structure, and
+`git shortlog -sn --all` to count commits by author. A commit is credited to the name and email in the author field,
+which is set by the identity configured in Git on the computer that made the commit.
+:::
+
+# If Authentication Cannot Be Fixed
+
+A member does not need to wait on one sign-in problem, and the instructor would rather receive an email than a
+missed milestone. The options, in order of preference, are the following.
+
+1. **Browser sign-in.** A computer with Git Credential Manager, or VS Code with its GitHub sign-in, can push without
+   a token or an SSH key. VS Code is an acceptable tool for any Git step in this challenge.
+2. **Pair at a working computer.** A teammate runs the commands while the member directs. The member's own work is
+   credited correctly by committing with the member's identity:
+   `git commit --author="Full Name <email-used-on-github>" -m "message"`.
+3. **Local first.** Branching, committing, and merging do not need GitHub, so the member completes the branch
+   locally and pushes after the sign-in is repaired.
+
+# Reference
+
+| Action | Command |
+|:-------|:--------|
+| Show the remote URL and protocol | `git remote -v` |
+| Change the remote URL | `git remote set-url origin <url>` |
+| Create and switch to a branch | `git switch -c branch-name` |
+| Stage a file | `git add filename.R` |
+| Commit | `git commit -m "message"` |
+| Push a branch for the first time | `git push -u origin branch-name` |
+| Download every branch from GitHub | `git fetch origin` |
+| Merge a branch into the current branch | `git merge --no-edit branch-name` |
+| Abandon a merge in progress | `git merge --abort` |
+| Undo a pushed commit | `git revert HEAD` |
+| View the history of all branches | `git log --oneline --graph --all` |
